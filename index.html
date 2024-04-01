@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Data Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+
+<body>
+    <div id="myChart" style="width:100%;height:100vh;"></div>
+
+    <script>
+        // Function to fetch CSV data and convert it to JSON
+        function fetchAndParseCSV(url, callback) {
+            fetch(url)
+                .then(response => response.text())
+                .then(csv => {
+                    Papa.parse(csv, {
+                        header: true,
+                        dynamicTyping: false,
+                        complete: function (results) {
+                            callback(results.data);
+                        }
+                    });
+                });
+        }
+
+        // Function to generate a color scale based on the number of unique values
+        function generateColorScale(numColors) {
+            var colors = [];
+            for (var i = 0; i < numColors; i++) {
+                colors.push('hsl(' + (i * (360 / numColors)) + ',100%,50%)');
+            }
+            return colors;
+        }
+
+        function parseNordicFloat(str) {
+            return parseFloat(str.replace(/\./g, '').replace(',', '.'));
+        }
+
+        // Fetch CSV data and visualize it
+        fetchAndParseCSV('https://docs.google.com/spreadsheets/d/1sQWIeQ1YK0gz3WlZ6qbikg17GYCAw9l9zv_XgeJIt28/export?gid=0&format=csv', function (data) {
+            var labels = [];
+            var flowValues = [];
+            var grindSettings = [];
+            var kaffeValues = [];
+
+            // Assuming CSV has 'Grind setting', 'Flow (g/s)', and 'Kaffe' columns
+            data.forEach(function (row) {
+                grindSettings.push(parseNordicFloat(row['Grind setting']));
+                flowValues.push(parseNordicFloat(row['Flow (g/s)']));
+                kaffeValues.push(row['Kaffe']);
+            });
+
+            // Creating chart using Chart.js
+            var ctx = document.getElementById('myChart'); // .getContext('2d');
+
+            // Create trace for each unique value of 'Kaffe'
+            var traces = [];
+            var kaffeValuesUnique = [...new Set(kaffeValues)];
+            var colorScale = generateColorScale(kaffeValuesUnique.length);
+            kaffeValuesUnique.forEach(function(kaffeValue, index) {
+                var indices = [];
+                kaffeValues.forEach(function(value, data_index) {
+                    if (value === kaffeValue) {
+                        indices.push(data_index);
+                    }
+                });
+                var trace = {
+                    x: indices.map(data_index => grindSettings[data_index]),
+                    y: indices.map(data_index => flowValues[data_index]),
+                    mode: 'markers',
+                    name: kaffeValue,
+                    marker: {
+                        size: 8,
+                        color: colorScale[index],
+                    }
+                };
+                traces.push(trace);
+            });
+
+            // Define layout
+            var layout = {
+                xaxis: {
+                    title: 'Grind setting'
+                },
+                yaxis: {
+                    title: 'Flow (g/s)'
+                },
+                autosize: true,
+            };
+
+            // Plot data
+            Plotly.newPlot(ctx, traces, layout);
+
+            // var myChart = new Chart(ctx, {
+            //     type: 'scatter',
+            //     data: {
+            //         datasets: [{
+            //             label: 'Data',
+            //             data: grindSettings.map((value, index) => ({ x: value, y: flowValues[index], kaffe: kaffeValues[index] })),
+            //             backgroundColor: function(context) {
+            //                 var kaffe = context.dataset.data[context.dataIndex].kaffe;
+            //                 return kaffe === 'some_value' ? 'red' : 'blue'; // Define colors based on 'Kaffe' values
+            //             },
+            //             pointRadius: 5
+            //         }]
+            //     },
+            //     options: {
+            //         scales: {
+            //             x: {
+            //                 title: {
+            //                     display: true,
+            //                     text: 'Grind setting'
+            //                 }
+            //             },
+            //             y: {
+            //                 title: {
+            //                     display: true,
+            //                     text: 'Flow (g/s)'
+            //                 }
+            //             }
+            //         }
+            //     }
+            // });
+        });
+    </script>
+</body>
+
+</html>
